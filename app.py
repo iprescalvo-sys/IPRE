@@ -26,24 +26,32 @@ def obtener_hora():
 
 def responder_con_ia(historial_ia, pregunta_usuario):
     """Llama a la API de Gemini solo para responder las preguntas de los temas (Act 2.3 y Act 3)."""
-    try:
-        client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
-        contexto = (
-            "Eres un asistente participando en un estudio académico de la PUC. "
-            "Responde de forma clara, informativa y cordial a la pregunta del usuario sobre sus temas de interés. "
-            "No agregues preguntas de cierre porque el sistema las añade automáticamente.\n\n"
-        )
-        for h in historial_ia:
-            contexto += f"{h['rol']}: {h['texto']}\n"
-        contexto += f"Usuario: {pregunta_usuario}\nAsistente:"
-        
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=contexto
-        )
-        return response.text.strip()
-    except Exception as e:
-        return f"Interesante pregunta. (Nota técnica: verifica la API Key: {e})"
+    client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+    contexto = (
+        "Eres un asistente participando en un estudio académico de la PUC. "
+        "Responde de forma clara, informativa y cordial a la pregunta del usuario sobre sus temas de interés. "
+        "No agregues preguntas de cierre porque el sistema las añade automáticamente.\n\n"
+    )
+    for h in historial_ia:
+        contexto += f"{h['rol']}: {h['texto']}\n"
+    contexto += f"Usuario: {pregunta_usuario}\nAsistente:"
+    
+    # Lista de modelos en orden de prioridad por si alguno cambia de nombre
+    modelos = ["gemini-3.8-flash", "gemini-3-flash-preview", "gemini-2.0-flash"]
+    
+    ultimo_error = ""
+    for modelo in modelos:
+        try:
+            response = client.models.generate_content(
+                model=modelo,
+                contents=contexto
+            )
+            return response.text.strip()
+        except Exception as e:
+            ultimo_error = str(e)
+            continue
+            
+    return f"Interesante pregunta. (Nota técnica: {ultimo_error})"
 
 # ==========================================
 # 2. GENERACIÓN DEL EXCEL Y ENVÍO POR CORREO
