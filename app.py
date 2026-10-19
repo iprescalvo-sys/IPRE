@@ -325,24 +325,38 @@ def procesar_entrada(texto_usuario):
 # ==========================================
 # 4. RENDERIZADO DE LA INTERFAZ Y BOTONES
 # ==========================================
+import streamlit.components.v1 as components
+
+# 1. Contenedor principal donde viven todos los mensajes
+contenedor_chat = st.container()
+
+with contenedor_chat:
+    for idx, msg in enumerate(st.session_state.mensajes_chat):
+        if idx == 0 and st.session_state.etapa != "ACT_0_CONSENTIMIENTO":
+            with st.expander("📄 Ver texto de Consentimiento Informado (Aceptado)"):
+                st.markdown(msg["texto"])
+        else:
+            with st.chat_message(msg["rol"]):
+                st.markdown(msg["texto"])
+
 etapa_actual = st.session_state.etapa
 etapas_texto_libre = ["P1", "P4", "P6", "ACT_1", "ACT_2_1", "ACT_2_2", "ACT_3_PREGUNTA", "ACT_4_1"]
 
-# 1. Capturar el texto libre ANTES de dibujar los mensajes (SIN usar st.rerun)
+# 2. Capturar texto libre y mostrar "Pensando..." en tiempo real dentro del contenedor
 if etapa_actual in etapas_texto_libre:
     entrada_usuario = st.chat_input("Escribe tu respuesta aquí...")
     if entrada_usuario:
-        procesar_entrada(entrada_usuario)
-        etapa_actual = st.session_state.etapa  # Actualizamos la etapa inmediatamente
-
-# 2. Dibujar todos los mensajes del chat
-for idx, msg in enumerate(st.session_state.mensajes_chat):
-    if idx == 0 and st.session_state.etapa != "ACT_0_CONSENTIMIENTO":
-        with st.expander("📄 Ver texto de Consentimiento Informado (Aceptado)"):
-            st.markdown(msg["texto"])
-    else:
-        with st.chat_message(msg["rol"]):
-            st.markdown(msg["texto"])
+        # Mostramos de inmediato lo que acaba de escribir el usuario
+        with contenedor_chat:
+            with st.chat_message("user"):
+                st.markdown(entrada_usuario)
+            # Mostramos la burbuja del asistente con el símbolo de espera mientras procesa
+            with st.chat_message("assistant"):
+                with st.spinner("Pensando respuesta..."):
+                    procesar_entrada(entrada_usuario)
+                # Apenas termina Gemini, mostramos la respuesta generada
+                st.markdown(st.session_state.mensajes_chat[-1]["texto"])
+        etapa_actual = st.session_state.etapa
 
 # 3. Mostrar botones interactivos cuando corresponda según la etapa
 opciones_botones = {
@@ -363,14 +377,13 @@ if etapa_actual in opciones_botones:
 
 # 4. Al finalizar, enviar el Excel automáticamente por correo en segundo plano
 if etapa_actual == "FINALIZADO" and not st.session_state.correo_enviado:
-    excel_io = generar_excel_en_memoria(st.session_state.datos_demograficos, st.session_state.registros_act)
-    exito = enviar_excel_por_correo(excel_io, st.session_state.datos_demograficos)
-    st.session_state.correo_enviado = True
+    with st.spinner("Guardando registro de la actividad..."):
+        excel_io = generar_excel_en_memoria(st.session_state.datos_demograficos, st.session_state.registros_act)
+        exito = enviar_excel_por_correo(excel_io, st.session_state.datos_demograficos)
+        st.session_state.correo_enviado = True
     if exito:
         st.success("Tus respuestas han sido registradas exitosamente. Ya puedes cerrar esta ventana.")
 
-# 5. Ancla invisible y Auto-Scroll universal para todas las versiones de Streamlit
-st.markdown('<div id="fin-del-chat"></div>', unsafe_allow_html=True)
-import streamlit.components.v1 as components
+# 5. Auto-scroll suave al último mensaje
 st.markdown('<div id="fin-del-chat"></div>', unsafe_allow_html=True)
 components.html(f"<script>setTimeout(function(){{const el=window.parent.document.getElementById('fin-del-chat');if(el)el.scrollIntoView({{behavior:'smooth',block:'end'}});}},150);//{len(st.session_state.mensajes_chat)}</script>", height=0)
