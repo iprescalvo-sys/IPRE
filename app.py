@@ -371,17 +371,6 @@ if etapa_actual == "FINALIZADO" and not st.session_state.correo_enviado:
 
 # 5. Ancla invisible y Auto-Scroll universal para todas las versiones de Streamlit
 st.markdown('<div id="fin-del-chat"></div>', unsafe_allow_html=True)
-components.html(
-    f"""
-    <script>
-        // Turno actual: {len(st.session_state.mensajes_chat)}
-        setTimeout(function() {{
-            const ancla = window.parent.document.getElementById('fin-del-chat');
-            if (ancla) {{
-                ancla.scrollIntoView({{ behavior: 'smooth', block: 'end' }});
-            }}
-        }}, 100);
-    </script>
-    """,
-    height=0,
-)
+import streamlit.components.v1 as components
+st.markdown('<div id="fin-del-chat"></div>', unsafe_allow_html=True)
+components.html(f"<script>setTimeout(function(){{const el=window.parent.document.getElementById('fin-del-chat');if(el)el.scrollIntoView({{behavior:'smooth',block:'end'}});}},150);//{len(st.session_state.mensajes_chat)}</script>", height=0)
