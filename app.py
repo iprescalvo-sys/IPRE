@@ -275,7 +275,7 @@ def procesar_entrada(texto_usuario):
     elif etapa == "ACT_1":
         registrar_interaccion(texto_usuario, hora_usr, "Act 1")
         # Conteo exacto de caracteres en Python (>= 100)
-        if len(texto_usuario) >= 150:
+        if len(texto_usuario) >= 50:
             st.session_state.etapa = "ACT_2_1"
             enviar_mensaje_bot("Cuéntame sobre temas que te interesen")
         else:
