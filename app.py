@@ -325,13 +325,26 @@ def procesar_entrada(texto_usuario):
 # ==========================================
 # 4. RENDERIZADO DE LA INTERFAZ Y BOTONES
 # ==========================================
-for msg in st.session_state.mensajes_chat:
-    with st.chat_message(msg["rol"]):
-        st.markdown(msg["texto"])
-
 etapa_actual = st.session_state.etapa
+etapas_texto_libre = ["P1", "P4", "P6", "ACT_1", "ACT_2_1", "ACT_2_2", "ACT_3_PREGUNTA", "ACT_4_1"]
 
-# Mostrar botones interactivos cuando corresponda según la etapa
+# 1. Capturar el texto libre ANTES de dibujar los mensajes (SIN usar st.rerun)
+if etapa_actual in etapas_texto_libre:
+    entrada_usuario = st.chat_input("Escribe tu respuesta aquí...")
+    if entrada_usuario:
+        procesar_entrada(entrada_usuario)
+        etapa_actual = st.session_state.etapa  # Actualizamos la etapa inmediatamente
+
+# 2. Dibujar todos los mensajes del chat
+for idx, msg in enumerate(st.session_state.mensajes_chat):
+    if idx == 0 and st.session_state.etapa != "ACT_0_CONSENTIMIENTO":
+        with st.expander("📄 Ver texto de Consentimiento Informado (Aceptado)"):
+            st.markdown(msg["texto"])
+    else:
+        with st.chat_message(msg["rol"]):
+            st.markdown(msg["texto"])
+
+# 3. Mostrar botones interactivos cuando corresponda según la etapa
 opciones_botones = {
     "ACT_0_CONSENTIMIENTO": ["Acepto participar", "No acepto participar"],
     "P2": ["Mujer", "Hombre", "Otro", "No desea responder"],
@@ -348,18 +361,27 @@ if etapa_actual in opciones_botones:
             procesar_entrada(opcion)
             st.rerun()
 
-# Mostrar barra de texto libre en las etapas abiertas
-etapas_texto_libre = ["P1", "P4", "P6", "ACT_1", "ACT_2_1", "ACT_2_2", "ACT_3_PREGUNTA", "ACT_4_1"]
-if etapa_actual in etapas_texto_libre:
-    entrada_usuario = st.chat_input("Escribe tu respuesta aquí...")
-    if entrada_usuario:
-        procesar_entrada(entrada_usuario)
-        st.rerun()
-
-# Al finalizar, enviar el Excel automáticamente por correo en segundo plano
+# 4. Al finalizar, enviar el Excel automáticamente por correo en segundo plano
 if etapa_actual == "FINALIZADO" and not st.session_state.correo_enviado:
     excel_io = generar_excel_en_memoria(st.session_state.datos_demograficos, st.session_state.registros_act)
     exito = enviar_excel_por_correo(excel_io, st.session_state.datos_demograficos)
     st.session_state.correo_enviado = True
     if exito:
         st.success("Tus respuestas han sido registradas exitosamente. Ya puedes cerrar esta ventana.")
+
+# 5. Ancla invisible y Auto-Scroll universal para todas las versiones de Streamlit
+st.markdown('<div id="fin-del-chat"></div>', unsafe_allow_html=True)
+components.html(
+    f"""
+    <script>
+        // Turno actual: {len(st.session_state.mensajes_chat)}
+        setTimeout(function() {{
+            const ancla = window.parent.document.getElementById('fin-del-chat');
+            if (ancla) {{
+                ancla.scrollIntoView({{ behavior: 'smooth', block: 'end' }});
+            }}
+        }}, 100);
+    </script>
+    """,
+    height=0,
+)
