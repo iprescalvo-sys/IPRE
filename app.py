@@ -32,7 +32,7 @@ def obtener_cliente_ia():
     return genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 
 def responder_con_ia(historial_ia, pregunta_usuario):
-    """Llama a la API de Gemini con velocidad optimizada y respaldo anti-caídas."""
+    """Llama a la API de Gemini en Modo Diagnóstico para revelar errores ocultos."""
     client = obtener_cliente_ia()
     
     contexto = (
@@ -41,37 +41,29 @@ def responder_con_ia(historial_ia, pregunta_usuario):
         "No agregues preguntas de cierre porque el sistema las añade automáticamente.\n\n"
     )
     
-    # Solo enviamos el historial reciente para que lea más rápido
     historial_reciente = historial_ia[-3:] if len(historial_ia) > 3 else historial_ia
     for h in historial_reciente:
         contexto += f"{h['rol']}: {h['texto']}\n"
         
     contexto += f"Usuario: {pregunta_usuario}\nAsistente:"
     
-    # Sistema de reintentos rápidos (Fail-safe)
+    errores = []
     for intento in range(3):
         try:
             response = client.models.generate_content(
                 model="gemini-3.8-flash",
                 contents=contexto,
-                config={"max_output_tokens": 200} # Respuesta corta y rápida
+                config={"max_output_tokens": 200}
             )
             return response.text.strip()
         except Exception as e:
-            error_str = str(e)
-            # Si el servidor está saturado, esperamos 1.5 segundos y reintentamos en silencio
-            if "503" in error_str or "429" in error_str or "UNAVAILABLE" in error_str:
-                time.sleep(1.5)
-                continue
-            else:
-                break # Si es otro tipo de error grave, sale del bucle
+            errores.append(str(e))
+            import time
+            time.sleep(1.5)
+            continue
 
-    # =========================================================================
-    # RESPUESTA COMODÍN (SALVAVIDAS DEL ESTUDIO)
-    # Si después de los intentos Google sigue caído, enviamos este texto.
-    # =========================================================================
-    return "Comprendo tu punto. Es una perspectiva interesante, ¿podrías darme un ejemplo o profundizar un poco más en tu idea?"
-
+    # Si falla, en lugar de responder algo genérico, imprimirá el error real en pantalla
+    return f"🛑 ERROR REAL DE GOOGLE: {errores[-1]}"
 # ==========================================
 # 2. GENERACIÓN DEL EXCEL Y ENVÍO POR CORREO
 # ==========================================
