@@ -37,7 +37,7 @@ def responder_con_ia(historial_ia, pregunta_usuario):
     contexto += f"Usuario: {pregunta_usuario}\nAsistente:"
     
     # Lista de modelos en orden de prioridad por si alguno cambia de nombre
-    modelos = ["gemini-3.8-flash", "gemini-3-flash-preview", "gemini-2.0-flash"]
+    modelos = ["gemini-3.8-flash", "gemini-3.8-pro", "gemini-3-flash"]
     
     ultimo_error = ""
     for modelo in modelos:
