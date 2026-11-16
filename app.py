@@ -7,6 +7,7 @@ from email.message import EmailMessage
 import openpyxl
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from google import genai
+import time  # <-- AGREGAR ESTO
 
 # ==========================================
 # 1. CONFIGURACIÓN INICIAL Y SECRETOS
@@ -24,35 +25,16 @@ ZONA_HORARIA = pytz.timezone("America/Santiago")
 def obtener_hora():
     return datetime.now(ZONA_HORARIA).strftime("%H:%M")
 
-def responder_con_ia(historial_ia, pregunta_usuario):
-    """Llama a la API de Gemini solo para responder las preguntas de los temas (Act 2.3 y Act 3)."""
-    client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
-    contexto = (
-        "Eres un asistente participando en un estudio académico de la PUC. "
-        "Responde de forma clara, informativa y cordial a la pregunta del usuario sobre sus temas de interés. "
-        "No agregues preguntas de cierre porque el sistema las añade automáticamente.\n\n"
-    )
-    for h in historial_ia:
-        contexto += f"{h['rol']}: {h['texto']}\n"
-    contexto += f"Usuario: {pregunta_usuario}\nAsistente:"
-    
-    # Lista de modelos en orden de prioridad por si alguno cambia de nombre
-    modelos = ["gemini-3.8-flash"]
-    
-    ultimo_error = ""
-    for modelo in modelos:
-        try:
-            response = client.models.generate_content(
-                model=modelo,
-                contents=contexto
-            )
-            return response.text.strip()
-        except Exception as e:
-            ultimo_error = str(e)
-            continue
-            
-    return f"Interesante pregunta. (Nota técnica: {ultimo_error})"
-
+import streamlit as st
+from datetime import datetime
+import pytz
+import io
+import smtplib
+from email.message import EmailMessage
+import openpyxl
+from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+from google import genai
+import time  # <-- AGREGAR ESTO
 # ==========================================
 # 2. GENERACIÓN DEL EXCEL Y ENVÍO POR CORREO
 # ==========================================
