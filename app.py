@@ -24,43 +24,39 @@ ZONA_HORARIA = pytz.timezone("America/Santiago")
 
 def obtener_hora():
     return datetime.now(ZONA_HORARIA).strftime("%H:%M")
+# 1. Mantenemos abierta la conexión con Google para ahorrar tiempo de autenticación
+@st.cache_resource
+def obtener_cliente_ia():
+    return genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 
 def responder_con_ia(historial_ia, pregunta_usuario):
-    """Llama a la API de Gemini optimizada para velocidad."""
-    client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+    """Llama a la API de Gemini optimizada al máximo para reducir la latencia."""
+    client = obtener_cliente_ia()
     
-    # 1. Ajuste en el prompt para pedir respuestas más concisas
     contexto = (
         "Eres un asistente participando en un estudio académico de la PUC. "
         "Responde de forma clara, informativa, CORDIAL Y BREVE (máximo 2 párrafos). "
         "No agregues preguntas de cierre porque el sistema las añade automáticamente.\n\n"
     )
-    for h in historial_ia:
+    
+    # 2. Solo enviamos el historial reciente (últimos 3 mensajes) para acelerar la lectura
+    historial_reciente = historial_ia[-3:] if len(historial_ia) > 3 else historial_ia
+    for h in historial_reciente:
         contexto += f"{h['rol']}: {h['texto']}\n"
+        
     contexto += f"Usuario: {pregunta_usuario}\nAsistente:"
     
-    modelo = "gemini-3.8-flash"
-    
-    for intento in range(3):
-        try:
-            # 2. Limitamos los tokens de salida para que no se quede "pensando" textos largos
-            response = client.models.generate_content(
-                model=modelo,
-                contents=contexto,
-                config={"max_output_tokens": 250} # Limita la longitud máxima (aprox 180 palabras)
-            )
-            return response.text.strip()
-        except Exception as e:
-            error_str = str(e)
-            # 3. Solo pausa si es saturación de Google (429/503). Si es otro error, falla rápido.
-            if "503" in error_str or "429" in error_str or "UNAVAILABLE" in error_str:
-                import time
-                time.sleep(1) # Reducimos la pausa a solo 1 segundo
-                continue
-            else:
-                return f"Error técnico procesando la solicitud: {error_str}"
-            
-    return "El sistema sigue experimentando demoras. Por favor, repite tu pregunta."
+    # Llamada directa, sin bucles de reintentos artificiales que sumen retrasos
+    try:
+        response = client.models.generate_content(
+            model="gemini-3.8-flash",
+            contents=contexto,
+            config={"max_output_tokens": 200} # Limita estrictamente la respuesta a ~150 palabras
+        )
+        return response.text.strip()
+    except Exception as e:
+        return f"Experimenté un micro-corte de red. ¿Podrías repetirme tu idea? (Nota: {str(e)})"
+
 # ==========================================
 # 2. GENERACIÓN DEL EXCEL Y ENVÍO POR CORREO
 # ==========================================
