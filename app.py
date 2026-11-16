@@ -38,7 +38,8 @@ def responder_con_ia(historial_ia, pregunta_usuario):
     contexto += f"Usuario: {pregunta_usuario}\nAsistente:"
     
     # Modelo estable para cuentas con plan
-    modelo = "gemini-1.5-flash"
+    # Modelo estable para cuentas con plan
+    modelo = "gemini-3.8-flash"
     max_reintentos = 3
     
     ultimo_error = ""
