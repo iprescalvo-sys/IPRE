@@ -37,7 +37,7 @@ def responder_con_ia(historial_ia, pregunta_usuario):
     
     contexto = (
         "Eres un asistente participando en un estudio académico de la PUC. "
-        "Responde de forma clara, informativa, CORDIAL Y BREVE (máximo 2 párrafos cortos). "
+        "Responde de forma clara, informativa, CORDIAL. "
         "No agregues preguntas de cierre porque el sistema las añade automáticamente.\n\n"
     )
     
