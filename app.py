@@ -32,12 +32,12 @@ def obtener_cliente_ia():
     return genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 
 def responder_con_ia(historial_ia, pregunta_usuario):
-    """Llama a la API de Gemini en Modo Diagnóstico para revelar errores ocultos."""
+    """Llama a la API de Gemini optimizada sin cortes abruptos y con respaldo."""
     client = obtener_cliente_ia()
     
     contexto = (
         "Eres un asistente participando en un estudio académico de la PUC. "
-        "Responde de forma clara, informativa, CORDIAL Y BREVE (máximo 2 párrafos). "
+        "Responde de forma clara, informativa, CORDIAL Y BREVE (máximo 2 párrafos cortos). "
         "No agregues preguntas de cierre porque el sistema las añade automáticamente.\n\n"
     )
     
@@ -47,24 +47,25 @@ def responder_con_ia(historial_ia, pregunta_usuario):
         
     contexto += f"Usuario: {pregunta_usuario}\nAsistente:"
     
-    errores = []
     for intento in range(3):
         try:
+            # Quitamos el config de max_output_tokens para evitar cortes de guillotina
             response = client.models.generate_content(
                 model="gemini-3.8-flash",
-                contents=contexto,
-                config={"max_output_tokens": 200}
+                contents=contexto
             )
             return response.text.strip()
         except Exception as e:
-            errores.append(str(e))
-            import time
-            time.sleep(1.5)
-            continue
+            error_str = str(e)
+            if "503" in error_str or "429" in error_str or "UNAVAILABLE" in error_str:
+                import time
+                time.sleep(1.5)
+                continue
+            else:
+                break 
 
-    # Si falla, en lugar de responder algo genérico, imprimirá el error real en pantalla
-    return f"🛑 ERROR REAL DE GOOGLE: {errores[-1]}"
-# ==========================================
+    # Respuesta de salvavidas por si Google Cloud falla durante el experimento
+    return "Comprendo tu punto. Es una perspectiva interesante, ¿podrías darme un ejemplo o profundizar un poco más en tu idea?"# ==========================================
 # 2. GENERACIÓN DEL EXCEL Y ENVÍO POR CORREO
 # ==========================================
 def generar_excel_en_memoria(datos_demograficos, registros_act):
