@@ -24,17 +24,39 @@ ZONA_HORARIA = pytz.timezone("America/Santiago")
 
 def obtener_hora():
     return datetime.now(ZONA_HORARIA).strftime("%H:%M")
-
-import streamlit as st
-from datetime import datetime
-import pytz
-import io
-import smtplib
-from email.message import EmailMessage
-import openpyxl
-from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
-from google import genai
-import time  # <-- AGREGAR ESTO
+    
+def responder_con_ia(historial_ia, pregunta_usuario):
+    """Llama a la API de Gemini con reintentos automáticos para evitar errores 503."""
+    client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+    contexto = (
+        "Eres un asistente participando en un estudio académico de la PUC. "
+        "Responde de forma clara, informativa y cordial a la pregunta del usuario sobre sus temas de interés. "
+        "No agregues preguntas de cierre porque el sistema las añade automáticamente.\n\n"
+    )
+    for h in historial_ia:
+        contexto += f"{h['rol']}: {h['texto']}\n"
+    contexto += f"Usuario: {pregunta_usuario}\nAsistente:"
+    
+    modelo = "gemini-3.8-flash"
+    max_reintentos = 3
+    
+    for intento in range(max_reintentos):
+        try:
+            response = client.models.generate_content(
+                model=modelo,
+                contents=contexto
+            )
+            return response.text.strip()
+        except Exception as e:
+            error_str = str(e)
+            # Si es un error 503 (servidor saturado), esperamos y reintentamos
+            if "503" in error_str or "UNAVAILABLE" in error_str or "429" in error_str:
+                if intento < max_reintentos - 1:
+                    time.sleep(2)  # Espera 2 segundos antes de volver a intentar
+                    continue
+            
+            # Si el error no es 503, o si ya agotamos los intentos, mostramos un mensaje amigable
+            return "El sistema está experimentando una alta demanda en este momento y me está costando procesar la información. Por favor, ¿podrías volver a enviarme tu pregunta?"
 # ==========================================
 # 2. GENERACIÓN DEL EXCEL Y ENVÍO POR CORREO
 # ==========================================
