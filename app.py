@@ -26,38 +26,41 @@ def obtener_hora():
     return datetime.now(ZONA_HORARIA).strftime("%H:%M")
 
 def responder_con_ia(historial_ia, pregunta_usuario):
-    """Llama a la API de Gemini (versión prioritaria) con reintentos para cortes de red."""
+    """Llama a la API de Gemini optimizada para velocidad."""
     client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+    
+    # 1. Ajuste en el prompt para pedir respuestas más concisas
     contexto = (
         "Eres un asistente participando en un estudio académico de la PUC. "
-        "Responde de forma clara, informativa y cordial a la pregunta del usuario sobre sus temas de interés. "
+        "Responde de forma clara, informativa, CORDIAL Y BREVE (máximo 2 párrafos). "
         "No agregues preguntas de cierre porque el sistema las añade automáticamente.\n\n"
     )
     for h in historial_ia:
         contexto += f"{h['rol']}: {h['texto']}\n"
     contexto += f"Usuario: {pregunta_usuario}\nAsistente:"
     
-    # Modelo estable para cuentas con plan
-    # Modelo estable para cuentas con plan
     modelo = "gemini-3.8-flash"
-    max_reintentos = 3
     
-    ultimo_error = ""
-    for intento in range(max_reintentos):
+    for intento in range(3):
         try:
+            # 2. Limitamos los tokens de salida para que no se quede "pensando" textos largos
             response = client.models.generate_content(
                 model=modelo,
-                contents=contexto
+                contents=contexto,
+                config={"max_output_tokens": 250} # Limita la longitud máxima (aprox 180 palabras)
             )
             return response.text.strip()
         except Exception as e:
-            ultimo_error = str(e)
-            time.sleep(2)  # Pausa breve si hay inestabilidad en la red
-            continue
+            error_str = str(e)
+            # 3. Solo pausa si es saturación de Google (429/503). Si es otro error, falla rápido.
+            if "503" in error_str or "429" in error_str or "UNAVAILABLE" in error_str:
+                import time
+                time.sleep(1) # Reducimos la pausa a solo 1 segundo
+                continue
+            else:
+                return f"Error técnico procesando la solicitud: {error_str}"
             
-    # Si todo falla (ej: se cae tu internet o Google Cloud), muestra un error claro
-    return f"Experimenté un problema de conexión al procesar tu solicitud. Por favor, intenta de nuevo. (Nota: {ultimo_error})"
-
+    return "El sistema sigue experimentando demoras. Por favor, repite tu pregunta."
 # ==========================================
 # 2. GENERACIÓN DEL EXCEL Y ENVÍO POR CORREO
 # ==========================================
