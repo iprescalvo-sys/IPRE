@@ -66,7 +66,9 @@ def responder_con_ia(historial_ia, pregunta_usuario):
                 return response.text.strip()
         except Exception as e:
             ultimo_error = str(e)
-            print(f"Error en intento {intento + 1} con Gemini: {ultimo_error}")
+            clave_actual = st.secrets["GEMINI_API_KEY"].strip()
+            st.caption(f"Clave en uso terminada en: ...{clave_actual[-4:]}")
+            st.error(f"Error completo: {ultimo_error}")
             if "429" in ultimo_error or "503" in ultimo_error or "UNAVAILABLE" in ultimo_error:
                 time.sleep(0.5)
                 continue
