@@ -28,45 +28,56 @@ def obtener_hora():
 
 # Mantenemos abierta la conexión con Google para ahorrar tiempo de autenticación
 @st.cache_resource
+import time
+from google import genai
+from google.genai import types
+
+@st.cache_resource
 def obtener_cliente_ia():
-    return genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+    return genai.Client(
+        api_key=st.secrets["GEMINI_API_KEY"],
+        http_options=types.HttpOptions(timeout=12000)  # 12 segundos en milisegundos
+    )
 
 def responder_con_ia(historial_ia, pregunta_usuario):
-    """Llama a la API de Gemini optimizada sin cortes abruptos y con respaldo."""
+    """Llama a la API de Gemini con límite de tiempo y diagnóstico claro si falla."""
     client = obtener_cliente_ia()
-    
+
     contexto = (
         "Eres un asistente participando en un estudio académico de la PUC. "
-        "Responde de forma clara, informativa, CORDIAL. "
+        "Responde de forma clara, informativa, CORDIAL Y BREVE (máximo 2 párrafos cortos). "
         "No agregues preguntas de cierre porque el sistema las añade automáticamente.\n\n"
     )
-    
+
     historial_reciente = historial_ia[-3:] if len(historial_ia) > 3 else historial_ia
     for h in historial_reciente:
         contexto += f"{h['rol']}: {h['texto']}\n"
-        
+
     contexto += f"Usuario: {pregunta_usuario}\nAsistente:"
-    
-    for intento in range(3):
+
+    ultimo_error = None
+
+    for intento in range(2):
         try:
-            # Quitamos el config de max_output_tokens para evitar cortes de guillotina
             response = client.models.generate_content(
-                model="gemini-3.8-flash",
+                model="gemini-2.5-flash",
                 contents=contexto
             )
-            return response.text.strip()
+            if response and response.text:
+                return response.text.strip()
         except Exception as e:
-            error_str = str(e)
-            if "503" in error_str or "429" in error_str or "UNAVAILABLE" in error_str:
-                import time
-                time.sleep(1.5)
+            ultimo_error = str(e)
+            print(f"Error en intento {intento + 1} con Gemini: {ultimo_error}")
+            if "429" in ultimo_error or "503" in ultimo_error or "UNAVAILABLE" in ultimo_error:
+                time.sleep(0.5)
                 continue
-            else:
-                break 
+            break
 
-    # Respuesta de salvavidas por si Google Cloud falla durante el experimento
-    return "Comprendo tu punto. Es una perspectiva interesante, ¿podrías darme un ejemplo o profundizar un poco más en tu idea?"# ==========================================
-# 2. GENERACIÓN DEL EXCEL Y ENVÍO POR CORREO
+    # Si estás probando el estudio, puedes ver el error real en la app para diagnosticarlo:
+    if ultimo_error:
+        st.caption(f"Diagnóstico técnico: {ultimo_error[:180]}")
+
+    return "Comprendo tu punto. Es una perspectiva interesante, ¿podrías darme un ejemplo o profundizar un poco más en tu idea?"# 2. GENERACIÓN DEL EXCEL Y ENVÍO POR CORREO
 # ==========================================
 def generar_excel_en_memoria(datos_demograficos, registros_act):
     wb = openpyxl.Workbook()
