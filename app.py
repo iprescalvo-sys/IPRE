@@ -62,7 +62,6 @@ def responder_con_ia(historial_ia, pregunta_usuario):
             model="gemini-3.8-flash",
             contents=contexto
             )
-            )
             if response and response.text:
                 return response.text.strip()
         except Exception as e:
