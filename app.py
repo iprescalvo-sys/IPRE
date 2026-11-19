@@ -9,7 +9,7 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from google import genai
 import time
 import streamlit.components.v1 as components
-
+from google.genai import types
 # ==========================================
 # 1. CONFIGURACIÓN INICIAL Y SECRETOS
 # ==========================================
@@ -28,9 +28,7 @@ def obtener_hora():
 
 # Mantenemos abierta la conexión con Google para ahorrar tiempo de autenticación
 @st.cache_resource
-import time
-from google import genai
-from google.genai import types
+
 
 @st.cache_resource
 def obtener_cliente_ia():
