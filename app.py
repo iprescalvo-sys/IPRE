@@ -36,6 +36,7 @@ def obtener_cliente_ia():
         api_key=st.secrets["GEMINI_API_KEY"],
         http_options=types.HttpOptions(timeout=12000)  # 12 segundos en milisegundos
     )
+    
 
 def responder_con_ia(historial_ia, pregunta_usuario):
     """Llama a la API de Gemini con límite de tiempo y diagnóstico claro si falla."""
@@ -58,8 +59,9 @@ def responder_con_ia(historial_ia, pregunta_usuario):
     for intento in range(2):
         try:
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=contexto
+            model="gemini-3.8-flash",
+            contents=contexto
+            )
             )
             if response and response.text:
                 return response.text.strip()
